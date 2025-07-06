@@ -1,0 +1,31 @@
+# 忽略编译产物
+bin/
+obj/
+
+# 用户配置文件（与编译无关）
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# 本地 SQLite 数据文件
+*.db
+*.sqlite
+
+# EF Core 自动生成的快照文件（可选）
+Migrations/*Snapshot.cs
+
+# 日志文件
+*.log
+
+# Visual Studio 和 Rider 等 IDE 的设置
+.vscode/
+.idea/
+*.DS_Store
+
+# 临时文件
+*.tmp
+*.bak
+
+# 环境配置（请视情况决定是否忽略）
+appsettings.Development.json

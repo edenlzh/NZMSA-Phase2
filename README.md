@@ -1,1 +1,1 @@
-# NZMSA-Phase2
+# NZMSA-Phase2 project: Hand In Hand
