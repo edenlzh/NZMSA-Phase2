@@ -1,5 +1,10 @@
 using HandInHand.Data;
+using HandInHand.Middlewares;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using HandInHand.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,7 +23,27 @@ builder.Services.AddCors(opt =>
               .AllowAnyMethod()
               .AllowAnyOrigin()));
 
+builder.Services.AddAutoMapper(typeof(Program));
+
 builder.Services.AddControllers();
+
+// JWT
+var jwtKey = builder.Configuration["Jwt:Key"]!;
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(opt =>
+    {
+        opt.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer           = true,
+            ValidateAudience         = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer   = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+    });
+builder.Services.AddAuthorization();
+builder.Services.AddScoped<TokenService>();
 
 // ---------------- 构建并配置管道 ----------------
 var app = builder.Build();
@@ -29,21 +54,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseMiddleware<ErrorHandlingMiddleware>();
+
 app.UseCors("client");
 
 // （1）健康检查端点
-app.MapGet("/", () => Results.Ok("HandInHand API running 🚀"));
+app.MapGet("/", () => Results.Ok("HandInHand API running successfully!"));
 
-// （2）最小 API – Skills 示例，其余实体放到专用控制器中
-app.MapGet("/api/skills", async (AppDbContext db) =>
-    await db.Skills.AsNoTracking().ToListAsync());
-
-app.MapPost("/api/skills", async (AppDbContext db, HandInHand.Models.Skill skill) =>
-{
-    db.Skills.Add(skill);
-    await db.SaveChangesAsync();
-    return Results.Created($"/api/skills/{skill.Id}", skill);
-});
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

@@ -1,66 +1,66 @@
+using AutoMapper;
 using HandInHand.Data;
+using HandInHand.Dtos;
 using HandInHand.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace HandInHand.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
-public class HelpRequestsController(AppDbContext db) : ControllerBase
+public class HelpRequestsController(AppDbContext db, IMapper mapper) : ControllerBase
 {
-    // 支持分页：?page=1&pageSize=10
+    [AllowAnonymous]
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<HelpRequest>>> GetHelpRequests(
+    public async Task<ActionResult<IEnumerable<HelpRequestDto>>> GetHelpRequests(
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         if (page <= 0 || pageSize <= 0) return BadRequest("分页参数错误");
 
-        var query = db.HelpRequests
-                      .AsNoTracking()
-                      .Include(h => h.Requester)
-                      .OrderByDescending(h => h.CreatedAt);
+        var q = db.HelpRequests.Include(h => h.Requester)
+                               .OrderByDescending(h => h.CreatedAt)
+                               .AsNoTracking();
 
-        var total = await query.CountAsync();
-        var data  = await query.Skip((page - 1) * pageSize)
-                               .Take(pageSize)
-                               .ToListAsync();
-
-        // 加入响应头，方便前端显示总页数
+        var total = await q.CountAsync();
+        var data  = await q.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
         Response.Headers.Append("X-Total-Count", total.ToString());
-        return data;
+
+        return mapper.Map<List<HelpRequestDto>>(data);
     }
 
+    [AllowAnonymous]
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<HelpRequest>> GetHelpRequest(int id)
+    public async Task<ActionResult<HelpRequestDto>> GetHelpRequest(int id)
     {
-        var item = await db.HelpRequests
-                           .AsNoTracking()
-                           .Include(h => h.Requester)
-                           .FirstOrDefaultAsync(h => h.Id == id);
-
-        return item is null ? NotFound() : item;
+        var entity = await db.HelpRequests.Include(h => h.Requester)
+                                          .AsNoTracking()
+                                          .FirstOrDefaultAsync(h => h.Id == id);
+        return entity is null ? NotFound() : mapper.Map<HelpRequestDto>(entity);
     }
 
     [HttpPost]
-    public async Task<ActionResult<HelpRequest>> PostHelpRequest(HelpRequest req)
+    public async Task<ActionResult<HelpRequestDto>> PostHelpRequest(HelpRequestDto dto)
     {
-        if (!db.Users.Any(u => u.Id == req.RequesterId))
-            return BadRequest($"User {req.RequesterId} 不存在");
+        if (!db.Users.Any(u => u.Id == dto.RequesterId))
+            return BadRequest($"User {dto.RequesterId} 不存在");
 
-        db.HelpRequests.Add(req);
+        var entity = mapper.Map<HelpRequest>(dto);
+        db.HelpRequests.Add(entity);
         await db.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetHelpRequest), new { id = req.Id }, req);
+        return CreatedAtAction(nameof(GetHelpRequest), new { id = entity.Id },
+                               mapper.Map<HelpRequestDto>(entity));
     }
 
-    // 仅支持更新解决状态与描述
     [HttpPatch("{id:int}")]
     public async Task<IActionResult> PatchHelpRequest(int id, [FromBody] bool isResolved)
     {
-        var req = await db.HelpRequests.FindAsync(id);
-        if (req is null) return NotFound();
+        var entity = await db.HelpRequests.FindAsync(id);
+        if (entity is null) return NotFound();
 
-        req.IsResolved = isResolved;
+        entity.IsResolved = isResolved;
         await db.SaveChangesAsync();
         return NoContent();
     }
@@ -68,10 +68,10 @@ public class HelpRequestsController(AppDbContext db) : ControllerBase
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteHelpRequest(int id)
     {
-        var req = await db.HelpRequests.FindAsync(id);
-        if (req is null) return NotFound();
+        var entity = await db.HelpRequests.FindAsync(id);
+        if (entity is null) return NotFound();
 
-        db.HelpRequests.Remove(req);
+        db.HelpRequests.Remove(entity);
         await db.SaveChangesAsync();
         return NoContent();
     }

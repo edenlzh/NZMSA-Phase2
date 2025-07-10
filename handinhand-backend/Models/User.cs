@@ -7,4 +7,5 @@ public class User {
     public string? AvatarUrl { get; set; }
     // 导航属性：用户拥有的技能
     public List<Skill>? Skills { get; set; }
+    public required string PasswordHash { get; set; }
 }

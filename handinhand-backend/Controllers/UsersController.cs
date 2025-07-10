@@ -1,68 +1,70 @@
+using AutoMapper;
 using HandInHand.Data;
+using HandInHand.Dtos;
 using HandInHand.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace HandInHand.Controllers;
 
+[Authorize]                                // 全局需要登录
 [ApiController]
 [Route("api/[controller]")]
-public class UsersController(AppDbContext db) : ControllerBase
+public class UsersController(AppDbContext db, IMapper mapper) : ControllerBase
 {
-    // GET: api/users
+    // 允许匿名查看用户列表（例：注册前浏览）
+    [AllowAnonymous]
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<User>>> GetUsers()
-        => await db.Users
-                   .AsNoTracking()
-                   .Include(u => u.Skills)
-                   .ToListAsync();
+    public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()
+    {
+        var users = await db.Users.Include(u => u.Skills)
+                                  .AsNoTracking()
+                                  .ToListAsync();
+        return mapper.Map<List<UserDto>>(users);
+    }
 
-    // GET: api/users/5
+    [AllowAnonymous]
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<User>> GetUser(int id)
+    public async Task<ActionResult<UserDto>> GetUser(int id)
     {
-        var user = await db.Users
-                           .AsNoTracking()
-                           .Include(u => u.Skills)
-                           .FirstOrDefaultAsync(u => u.Id == id);
-
-        return user is null ? NotFound() : user;
+        var user = await db.Users.Include(u => u.Skills)
+                                 .AsNoTracking()
+                                 .FirstOrDefaultAsync(u => u.Id == id);
+        return user is null ? NotFound() : mapper.Map<UserDto>(user);
     }
 
-    // POST: api/users
-    [HttpPost]
-    public async Task<ActionResult<User>> PostUser(User user)
+    [HttpPost]                              // 需要登录
+    public async Task<ActionResult<UserDto>> PostUser(UserDto dto)
     {
-        db.Users.Add(user);
+        var entity = mapper.Map<User>(dto);
+        db.Users.Add(entity);
         await db.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
+        return CreatedAtAction(nameof(GetUser), new { id = entity.Id },
+                               mapper.Map<UserDto>(entity));
     }
 
-    // PUT: api/users/5
     [HttpPut("{id:int}")]
-    public async Task<IActionResult> PutUser(int id, User user)
+    public async Task<IActionResult> PutUser(int id, UserDto dto)
     {
-        if (id != user.Id) return BadRequest("ID 不一致");
-        db.Entry(user).State = EntityState.Modified;
+        if (id != dto.Id) return BadRequest("ID 不一致");
 
-        try { await db.SaveChangesAsync(); }
-        catch (DbUpdateConcurrencyException) when (!UserExists(id))
-        { return NotFound(); }
+        var entity = await db.Users.FindAsync(id);
+        if (entity is null) return NotFound();
 
+        mapper.Map(dto, entity);
+        await db.SaveChangesAsync();
         return NoContent();
     }
 
-    // DELETE: api/users/5
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteUser(int id)
     {
-        var user = await db.Users.FindAsync(id);
-        if (user is null) return NotFound();
+        var entity = await db.Users.FindAsync(id);
+        if (entity is null) return NotFound();
 
-        db.Users.Remove(user);
+        db.Users.Remove(entity);
         await db.SaveChangesAsync();
         return NoContent();
     }
-
-    private bool UserExists(int id) => db.Users.Any(e => e.Id == id);
 }

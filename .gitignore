@@ -1,0 +1,16 @@
+# ------- 根层通用 -------
+*.log
+*.tmp
+*.DS_Store
+Thumbs.db
+
+# 测试结果 / 覆盖率
+TestResults/
+coverage/
+
+# dotnet build 输出（根层不会有 bin/obj；防守式加上）
+bin/
+obj/
+
+# VSCode 工作区设置（可保留 .vscode/launch.json）
+.vscode/*.code-workspace

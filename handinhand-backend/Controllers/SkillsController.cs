@@ -1,69 +1,72 @@
+using AutoMapper;
 using HandInHand.Data;
+using HandInHand.Dtos;
 using HandInHand.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace HandInHand.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
-public class SkillsController(AppDbContext db) : ControllerBase
+public class SkillsController(AppDbContext db, IMapper mapper) : ControllerBase
 {
-    // 可通过 ?userId=1 过滤某用户技能
+    [AllowAnonymous]
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Skill>>> GetSkills([FromQuery] int? userId = null)
+    public async Task<ActionResult<IEnumerable<SkillDto>>> GetSkills([FromQuery] int? userId = null)
     {
-        var query = db.Skills.AsNoTracking();
-        if (userId is not null) query = query.Where(s => s.UserId == userId);
-        return await query.Include(s => s.User).ToListAsync();
+        var q = db.Skills.Include(s => s.User).AsNoTracking();
+        if (userId is not null) q = q.Where(s => s.UserId == userId);
+        var list = await q.ToListAsync();
+        return mapper.Map<List<SkillDto>>(list);
     }
 
+    [AllowAnonymous]
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<Skill>> GetSkill(int id)
+    public async Task<ActionResult<SkillDto>> GetSkill(int id)
     {
-        var skill = await db.Skills
-                            .AsNoTracking()
-                            .Include(s => s.User)
-                            .FirstOrDefaultAsync(s => s.Id == id);
-
-        return skill is null ? NotFound() : skill;
+        var entity = await db.Skills.Include(s => s.User)
+                                    .AsNoTracking()
+                                    .FirstOrDefaultAsync(s => s.Id == id);
+        return entity is null ? NotFound() : mapper.Map<SkillDto>(entity);
     }
 
     [HttpPost]
-    public async Task<ActionResult<Skill>> PostSkill(Skill skill)
+    public async Task<ActionResult<SkillDto>> PostSkill(SkillDto dto)
     {
-        // 确认外键有效
-        if (!db.Users.Any(u => u.Id == skill.UserId))
-            return BadRequest($"User {skill.UserId} 不存在");
+        if (!db.Users.Any(u => u.Id == dto.UserId))
+            return BadRequest($"User {dto.UserId} 不存在");
 
-        db.Skills.Add(skill);
+        var entity = mapper.Map<Skill>(dto);
+        db.Skills.Add(entity);
         await db.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetSkill), new { id = skill.Id }, skill);
+        return CreatedAtAction(nameof(GetSkill), new { id = entity.Id },
+                               mapper.Map<SkillDto>(entity));
     }
 
     [HttpPut("{id:int}")]
-    public async Task<IActionResult> PutSkill(int id, Skill skill)
+    public async Task<IActionResult> PutSkill(int id, SkillDto dto)
     {
-        if (id != skill.Id) return BadRequest("ID 不一致");
-        db.Entry(skill).State = EntityState.Modified;
+        if (id != dto.Id) return BadRequest();
 
-        try { await db.SaveChangesAsync(); }
-        catch (DbUpdateConcurrencyException) when (!SkillExists(id))
-        { return NotFound(); }
+        var entity = await db.Skills.FindAsync(id);
+        if (entity is null) return NotFound();
 
+        mapper.Map(dto, entity);
+        await db.SaveChangesAsync();
         return NoContent();
     }
 
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteSkill(int id)
     {
-        var skill = await db.Skills.FindAsync(id);
-        if (skill is null) return NotFound();
+        var entity = await db.Skills.FindAsync(id);
+        if (entity is null) return NotFound();
 
-        db.Skills.Remove(skill);
+        db.Skills.Remove(entity);
         await db.SaveChangesAsync();
         return NoContent();
     }
-
-    private bool SkillExists(int id) => db.Skills.Any(e => e.Id == id);
 }
