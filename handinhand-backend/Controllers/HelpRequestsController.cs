@@ -5,6 +5,8 @@ using HandInHand.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt; 
 
 namespace HandInHand.Controllers;
 
@@ -44,14 +46,22 @@ public class HelpRequestsController(AppDbContext db, IMapper mapper) : Controlle
     [HttpPost]
     public async Task<ActionResult<HelpRequestDto>> PostHelpRequest(HelpRequestDto dto)
     {
-        if (!db.Users.Any(u => u.Id == dto.RequesterId))
-            return BadRequest($"User {dto.RequesterId} 不存在");
+        // 1. 从 JWT 中解析当前登录用户 Id
+        var claim = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst(JwtRegisteredClaimNames.Sub);
+        if (claim is null) return Unauthorized();
 
+        var userId = int.Parse(claim.Value);
+
+        // 2. 将 DTO 映射到实体并强制写入 RequesterId/CreatedAt
         var entity = mapper.Map<HelpRequest>(dto);
+        entity.RequesterId = userId;
+        entity.CreatedAt = DateTime.UtcNow;
         db.HelpRequests.Add(entity);
         await db.SaveChangesAsync();
+
+        var resultDto = mapper.Map<HelpRequestDto>(entity);
         return CreatedAtAction(nameof(GetHelpRequest), new { id = entity.Id },
-                               mapper.Map<HelpRequestDto>(entity));
+                               resultDto);
     }
 
     [HttpPatch("{id:int}")]

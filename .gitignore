@@ -14,3 +14,7 @@ obj/
 
 # VSCode 工作区设置（可保留 .vscode/launch.json）
 .vscode/*.code-workspace
+
+# SQLite WAL/SHM (runtime)
+*.db-wal
+*.db-shm

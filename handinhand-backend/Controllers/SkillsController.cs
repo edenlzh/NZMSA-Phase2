@@ -5,6 +5,8 @@ using HandInHand.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace HandInHand.Controllers;
 
@@ -36,14 +38,20 @@ public class SkillsController(AppDbContext db, IMapper mapper) : ControllerBase
     [HttpPost]
     public async Task<ActionResult<SkillDto>> PostSkill(SkillDto dto)
     {
-        if (!db.Users.Any(u => u.Id == dto.UserId))
-            return BadRequest($"User {dto.UserId} 不存在");
+        // 从 JWT 里取当前登录用户 Id（在 TokenService 里我们把 Id 存在 sub）
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst(JwtRegisteredClaimNames.Sub);
+        if (userIdClaim is null) return Unauthorized();
+
+        var userId = int.Parse(userIdClaim.Value);
 
         var entity = mapper.Map<Skill>(dto);
+        entity.UserId = userId; // 强制绑定当前用户
         db.Skills.Add(entity);
         await db.SaveChangesAsync();
+
+        var resultDto = mapper.Map<SkillDto>(entity);
         return CreatedAtAction(nameof(GetSkill), new { id = entity.Id },
-                               mapper.Map<SkillDto>(entity));
+                               resultDto);
     }
 
     [HttpPut("{id:int}")]

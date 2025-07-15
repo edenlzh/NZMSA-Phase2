@@ -1,69 +1,26 @@
+@config "../tailwind.config.ts";
 @import "tailwindcss";
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@import "tailwindcss/preflight";   /* 替代 @tailwind base */
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+html,body,#root{ @apply h-full w-full bg-surface-base;}
+html.dark body { @apply bg-surface-dark text-white;}
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
+/* 页面主容器，居中且最大宽度 */
+.page { @apply w-full max-w-[1200px] mx-auto px-4; }
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+/* input / textarea 统一 */
+@layer components{
+  .input{ @apply border border-gray-300 rounded px-3 py-2 w-full dark:bg-surface-card-dark dark:border-gray-500 dark:text-white;}
+  .btn-primary{
+    @apply inline-block rounded-lg px-4 py-2 font-medium transition shadow;
+    @apply bg-yellow-400 hover:bg-yellow-500 text-gray-900;
+    @apply dark:bg-yellow-600 dark:hover:bg-yellow-500 dark:text-white;
+    @apply rounded-lg;
   }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+  .card{ @apply bg-surface-card dark:bg-surface-card-dark rounded-xl shadow;}
+  .footer-text{@apply text-xs md:text-sm dark:text-white;}
+  .nav-link,.footer-link{@apply hover:underline dark:text-white;}
+  .main-content{ @apply bg-[#FFF8DC] dark:bg-[#2C3E3F] text-gray-900 dark:text-white p-6;}
+  .responsive-container { @apply mx-auto px-4 sm:px-6 lg:px-8 max-w-full;}
 }
