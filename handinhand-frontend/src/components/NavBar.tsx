@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLang } from '../context/LangContext';
 import { useTranslation } from 'react-i18next';
+import AvatarMenu from './AvatarMenu';
 
 export default function NavBar() {
   const { jwt, logout } = useAuth();
@@ -58,6 +59,9 @@ export default function NavBar() {
           ) : (
             <Link to="/login" className="btn-primary min-w-[80px] text-center whitespace-nowrap px-4">{t('login')}</Link>
           )}
+        </div>
+        <div className="flex items-center gap-4">
+          <AvatarMenu />
         </div>
       </div>
     </nav>

@@ -22,7 +22,8 @@ public class AuthController(AppDbContext db, TokenService tokenSvc) : Controller
         {
             UserName = dto.UserName,
             Email = dto.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password)
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+            AvatarUrl = "/avatars/defaultAvatar.png" // 默认头像 URL
         };
 
         db.Users.Add(user);

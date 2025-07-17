@@ -8,10 +8,11 @@ interface AuthCtx {
 }
 const AuthContext = createContext<AuthCtx>({ jwt: null, setJwt: () => {}, logout(){} });
 export const useAuth = () => useContext(AuthContext);
+export const getJwt = () => localStorage.getItem('jwt');
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
   const [jwt, setJwtState] = useState<string | null>(
-    () => localStorage.getItem('jwt') ?? null,
+    getJwt()
   );
   const setJwt = (t: string | null) => {
     if (t) localStorage.setItem('jwt', t);

@@ -17,4 +17,6 @@ public class HelpRequest {
 
     // 是否已解决
     public bool IsResolved { get; set; } = false;
+
+    public ICollection<Comment> Comments { get; } = new List<Comment>();
 }

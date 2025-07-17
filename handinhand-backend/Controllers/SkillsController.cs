@@ -6,75 +6,85 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using System.IdentityModel.Tokens.Jwt;
 
 namespace HandInHand.Controllers;
 
-[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class SkillsController(AppDbContext db, IMapper mapper) : ControllerBase
 {
-    [AllowAnonymous]
+    /* ---------- 匿名查看 ---------- */
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<SkillDto>>> GetSkills([FromQuery] int? userId = null)
+    public async Task<IEnumerable<SkillDto>> List([FromQuery] int? userId)
     {
-        var q = db.Skills.Include(s => s.User).AsNoTracking();
-        if (userId is not null) q = q.Where(s => s.UserId == userId);
-        var list = await q.ToListAsync();
+        var query = db.Skills.Include(s => s.User).AsQueryable();
+        if (userId != null) query = query.Where(s => s.UserId == userId);
+        return mapper.Map<List<SkillDto>>(await query.ToListAsync());
+    }
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<SkillDto>> Detail(int id)
+    {
+        var s = await db.Skills.Include(x => x.User).FirstOrDefaultAsync(x => x.Id == id);
+        return s is null ? NotFound() : mapper.Map<SkillDto>(s);
+    }
+
+    /* ---------- 创建 ---------- */
+    [Authorize]
+    [HttpPost]
+    public async Task<ActionResult<SkillDto>> Create(SkillDto dto)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var entity = mapper.Map<Skill>(dto);
+        entity.UserId = userId;
+        db.Skills.Add(entity);
+        await db.SaveChangesAsync();
+        return CreatedAtAction(nameof(Detail), new { id = entity.Id }, mapper.Map<SkillDto>(entity));
+    }
+
+    /* ---------- 我的技能列表 ---------- */
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<IEnumerable<SkillDto>> My()
+    {
+        var me = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var list = await db.Skills
+            .Where(s => s.UserId == me)
+            .Include(s => s.User)
+            .ToListAsync();
         return mapper.Map<List<SkillDto>>(list);
     }
 
-    [AllowAnonymous]
-    [HttpGet("{id:int}")]
-    public async Task<ActionResult<SkillDto>> GetSkill(int id)
-    {
-        var entity = await db.Skills.Include(s => s.User)
-                                    .AsNoTracking()
-                                    .FirstOrDefaultAsync(s => s.Id == id);
-        return entity is null ? NotFound() : mapper.Map<SkillDto>(entity);
-    }
-
-    [HttpPost]
-    public async Task<ActionResult<SkillDto>> PostSkill(SkillDto dto)
-    {
-        // 从 JWT 里取当前登录用户 Id（在 TokenService 里我们把 Id 存在 sub）
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst(JwtRegisteredClaimNames.Sub);
-        if (userIdClaim is null) return Unauthorized();
-
-        var userId = int.Parse(userIdClaim.Value);
-
-        var entity = mapper.Map<Skill>(dto);
-        entity.UserId = userId; // 强制绑定当前用户
-        db.Skills.Add(entity);
-        await db.SaveChangesAsync();
-
-        var resultDto = mapper.Map<SkillDto>(entity);
-        return CreatedAtAction(nameof(GetSkill), new { id = entity.Id },
-                               resultDto);
-    }
-
+    /* ---------- 更新 ---------- */
+    [Authorize]
     [HttpPut("{id:int}")]
-    public async Task<IActionResult> PutSkill(int id, SkillDto dto)
+    public async Task<IActionResult> Update(int id, SkillDto dto)
     {
         if (id != dto.Id) return BadRequest();
-
         var entity = await db.Skills.FindAsync(id);
         if (entity is null) return NotFound();
+
+        var me = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        if (entity.UserId != me) return Forbid();
 
         mapper.Map(dto, entity);
         await db.SaveChangesAsync();
-        return NoContent();
+        return Ok(new { message = "Skill updated" });
     }
 
+    /* ---------- 删除 ---------- */
+    [Authorize]
     [HttpDelete("{id:int}")]
-    public async Task<IActionResult> DeleteSkill(int id)
+    public async Task<IActionResult> Delete(int id)
     {
-        var entity = await db.Skills.FindAsync(id);
+        var entity = await db.Skills.Include(s => s.Comments).FirstOrDefaultAsync(s => s.Id == id);
         if (entity is null) return NotFound();
 
-        db.Skills.Remove(entity);
+        var me = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        if (entity.UserId != me) return Forbid();
+
+        db.Skills.Remove(entity);        // 级联删除评论
         await db.SaveChangesAsync();
-        return NoContent();
+        return Ok(new { message = "Skill deleted" });
     }
 }

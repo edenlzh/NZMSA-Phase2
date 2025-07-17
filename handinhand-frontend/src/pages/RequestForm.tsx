@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { createHelpRequest } from '../api/helpRequest';
+import { createRequest } from '../api/helpRequest';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -10,7 +10,7 @@ export default function RequestForm() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await createHelpRequest(form);
+    await createRequest(form);
     nav('/requests');
   };
 

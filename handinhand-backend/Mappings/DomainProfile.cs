@@ -23,5 +23,10 @@ public class DomainProfile : Profile
             .ForMember(d => d.RequesterName, opt => opt.MapFrom(h => h.Requester!.UserName))
             .ReverseMap()
             .ForMember(h => h.Requester, opt => opt.Ignore());
+
+        // Comment
+        CreateMap<Comment, CommentDto>().ForMember(d => d.AuthorName, c => c.MapFrom(s => s.Author!.UserName));
+
+        CreateMap<CommentCreateDto, Comment>();
     }
 }

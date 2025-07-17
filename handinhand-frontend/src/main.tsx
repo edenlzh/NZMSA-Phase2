@@ -9,6 +9,9 @@ import './index.css';
 import './i18n';
 import ThemeProvider from './context/ThemeContext';
 import LangProvider from './context/LangContext';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const qc = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -16,7 +19,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <AuthProvider>
         <ThemeProvider>
           <LangProvider>
-            <RouterProvider router={router} />
+            <QueryClientProvider client={qc}>
+              <RouterProvider router={router} />
+            </QueryClientProvider>
           </LangProvider>
         </ThemeProvider>
       </AuthProvider>

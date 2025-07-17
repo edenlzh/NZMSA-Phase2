@@ -3,68 +3,122 @@ using HandInHand.Data;
 using HandInHand.Dtos;
 using HandInHand.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace HandInHand.Controllers;
 
-[Authorize]                                // 全局需要登录
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
-public class UsersController(AppDbContext db, IMapper mapper) : ControllerBase
+public class UsersController(
+        AppDbContext db,
+        IMapper mapper,
+        IWebHostEnvironment env,
+        IPasswordHasher<User> hasher)
+    : ControllerBase
 {
-    // 允许匿名查看用户列表（例：注册前浏览）
+    /* ---------- 公共列表 ---------- */
     [AllowAnonymous]
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()
-    {
-        var users = await db.Users.Include(u => u.Skills)
-                                  .AsNoTracking()
-                                  .ToListAsync();
-        return mapper.Map<List<UserDto>>(users);
-    }
+    public async Task<IEnumerable<UserDto>> GetUsers()
+        => mapper.Map<List<UserDto>>(await db.Users.ToListAsync());
 
     [AllowAnonymous]
     [HttpGet("{id:int}")]
     public async Task<ActionResult<UserDto>> GetUser(int id)
+        => mapper.Map<UserDto>(await db.Users.FindAsync(id));
+
+    /* ---------- 当前用户资料 ---------- */
+    [HttpGet("me")]
+    public async Task<ActionResult<UserDto>> Me()
+        => mapper.Map<UserDto>(await Current());
+
+    [HttpPut("me")]
+    public async Task<IActionResult> UpdateMe(UserUpdateDto dto)
     {
-        var user = await db.Users.Include(u => u.Skills)
-                                 .AsNoTracking()
-                                 .FirstOrDefaultAsync(u => u.Id == id);
-        return user is null ? NotFound() : mapper.Map<UserDto>(user);
-    }
+        var user = await Current();
 
-    [HttpPost]                              // 需要登录
-    public async Task<ActionResult<UserDto>> PostUser(UserDto dto)
-    {
-        var entity = mapper.Map<User>(dto);
-        db.Users.Add(entity);
-        await db.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetUser), new { id = entity.Id },
-                               mapper.Map<UserDto>(entity));
-    }
+        /* 用户名 / 邮箱唯一校验 */
+        if (!string.IsNullOrWhiteSpace(dto.UserName) &&
+            dto.UserName != user.UserName)
+        {
+            if (await db.Users.AnyAsync(u => u.UserName == dto.UserName))
+                return Conflict("UserName taken");
+            user.UserName = dto.UserName;
+        }
+        if (!string.IsNullOrWhiteSpace(dto.Email) &&
+            dto.Email != user.Email)
+        {
+            if (await db.Users.AnyAsync(u => u.Email == dto.Email))
+                return Conflict("Email taken");
+            user.Email = dto.Email;
+        }
 
-    [HttpPut("{id:int}")]
-    public async Task<IActionResult> PutUser(int id, UserDto dto)
-    {
-        if (id != dto.Id) return BadRequest("ID 不一致");
+        /* 修改密码 */
+        if (!string.IsNullOrWhiteSpace(dto.NewPassword))
+        {
+            if (string.IsNullOrWhiteSpace(dto.OldPassword) ||
+                hasher.VerifyHashedPassword(user, user.PasswordHash, dto.OldPassword)
+                    != PasswordVerificationResult.Success)
+                return BadRequest("Old password incorrect");
 
-        var entity = await db.Users.FindAsync(id);
-        if (entity is null) return NotFound();
+            user.PasswordHash = hasher.HashPassword(user, dto.NewPassword);
+        }
 
-        mapper.Map(dto, entity);
+        /* 头像 URL */
+        if (!string.IsNullOrWhiteSpace(dto.AvatarUrl))
+            user.AvatarUrl = dto.AvatarUrl;
+
         await db.SaveChangesAsync();
         return NoContent();
     }
 
-    [HttpDelete("{id:int}")]
-    public async Task<IActionResult> DeleteUser(int id)
+    /* ---------- 上传头像 ---------- */
+    [HttpPost("me/avatar")]
+    public async Task<ActionResult<string>> UploadAvatar(IFormFile file)
     {
-        var entity = await db.Users.FindAsync(id);
-        if (entity is null) return NotFound();
+        if (file.Length == 0) return BadRequest("Empty file");
 
-        db.Users.Remove(entity);
+        var folder = Path.Combine(env.WebRootPath, "avatars");
+        Directory.CreateDirectory(folder);
+        var ext = Path.GetExtension(file.FileName);
+        var name = $"{Guid.NewGuid()}{ext}";
+        var path = Path.Combine(folder, name);
+
+        await using var fs = new FileStream(path, FileMode.Create);
+        await file.CopyToAsync(fs);
+
+        var url = $"/avatars/{name}";
+        var user = await Current();
+        user.AvatarUrl = url;
         await db.SaveChangesAsync();
-        return NoContent();
+
+        return Created(user.AvatarUrl, user.AvatarUrl);
+    }
+
+    /* ---------- 删除账号 ---------- */
+    [HttpDelete("me")]
+    public async Task<IActionResult> DeleteMe()
+    {
+        var user = await Current();
+
+        /* EF 级联：删除用户 ⇒ 其 Skills / HelpRequests / Comments 均删除 */
+        db.Users.Remove(user);
+        await db.SaveChangesAsync();
+
+        return Ok(new { message = "Account deleted" });   // 便于前端 toast
+    }
+
+    /* ---------- 内部帮助 ---------- */
+    private async Task<User> Current()
+    {
+        var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(idClaim, out var id))
+            throw new ApplicationException("Invalid user id in JWT");
+
+        return await db.Users.FirstAsync(u => u.Id == id);
     }
 }

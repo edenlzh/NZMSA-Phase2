@@ -9,4 +9,6 @@ public class Skill {
     public int UserId { get; set; }
     // 导航属性
     public User? User { get; set; }
+
+    public ICollection<Comment> Comments { get; } = new List<Comment>();
 }

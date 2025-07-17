@@ -6,83 +6,85 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using System.IdentityModel.Tokens.Jwt; 
 
 namespace HandInHand.Controllers;
 
-[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class HelpRequestsController(AppDbContext db, IMapper mapper) : ControllerBase
 {
-    [AllowAnonymous]
+    /* ---------- 匿名查看 ---------- */
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<HelpRequestDto>>> GetHelpRequests(
-        [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    public async Task<IEnumerable<HelpRequestDto>> List([FromQuery] int? userId)
     {
-        if (page <= 0 || pageSize <= 0) return BadRequest("分页参数错误");
-
-        var q = db.HelpRequests.Include(h => h.Requester)
-                               .OrderByDescending(h => h.CreatedAt)
-                               .AsNoTracking();
-
-        var total = await q.CountAsync();
-        var data  = await q.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
-        Response.Headers.Append("X-Total-Count", total.ToString());
-
-        return mapper.Map<List<HelpRequestDto>>(data);
+        var q = db.HelpRequests.Include(r => r.Requester).AsQueryable();
+        if (userId != null) q = q.Where(r => r.RequesterId == userId);
+        return mapper.Map<List<HelpRequestDto>>(await q.ToListAsync());
     }
 
-    [AllowAnonymous]
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<HelpRequestDto>> GetHelpRequest(int id)
+    public async Task<ActionResult<HelpRequestDto>> Detail(int id)
     {
-        var entity = await db.HelpRequests.Include(h => h.Requester)
-                                          .AsNoTracking()
-                                          .FirstOrDefaultAsync(h => h.Id == id);
-        return entity is null ? NotFound() : mapper.Map<HelpRequestDto>(entity);
+        var r = await db.HelpRequests.Include(x => x.Requester).FirstOrDefaultAsync(x => x.Id == id);
+        return r is null ? NotFound() : mapper.Map<HelpRequestDto>(r);
     }
 
+    /* ---------- 创建 ---------- */
+    [Authorize]
     [HttpPost]
-    public async Task<ActionResult<HelpRequestDto>> PostHelpRequest(HelpRequestDto dto)
+    public async Task<ActionResult<HelpRequestDto>> Create(HelpRequestDto dto)
     {
-        // 1. 从 JWT 中解析当前登录用户 Id
-        var claim = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst(JwtRegisteredClaimNames.Sub);
-        if (claim is null) return Unauthorized();
-
-        var userId = int.Parse(claim.Value);
-
-        // 2. 将 DTO 映射到实体并强制写入 RequesterId/CreatedAt
+        var me = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var entity = mapper.Map<HelpRequest>(dto);
-        entity.RequesterId = userId;
-        entity.CreatedAt = DateTime.UtcNow;
+        entity.RequesterId = me;
         db.HelpRequests.Add(entity);
         await db.SaveChangesAsync();
-
-        var resultDto = mapper.Map<HelpRequestDto>(entity);
-        return CreatedAtAction(nameof(GetHelpRequest), new { id = entity.Id },
-                               resultDto);
+        return CreatedAtAction(nameof(Detail), new { id = entity.Id }, mapper.Map<HelpRequestDto>(entity));
     }
 
-    [HttpPatch("{id:int}")]
-    public async Task<IActionResult> PatchHelpRequest(int id, [FromBody] bool isResolved)
+    /* ---------- 我的求助 ---------- */
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<IEnumerable<HelpRequestDto>> My()
     {
+        var me = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var list = await db.HelpRequests
+            .Where(r => r.RequesterId == me)
+            .Include(r => r.Requester)
+            .ToListAsync();
+        return mapper.Map<List<HelpRequestDto>>(list);
+    }
+
+    /* ---------- 更新 ---------- */
+    [Authorize]
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int id, HelpRequestDto dto)
+    {
+        if (id != dto.Id) return BadRequest();
         var entity = await db.HelpRequests.FindAsync(id);
         if (entity is null) return NotFound();
 
-        entity.IsResolved = isResolved;
+        var me = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        if (entity.RequesterId != me) return Forbid();
+
+        mapper.Map(dto, entity);
         await db.SaveChangesAsync();
-        return NoContent();
+        return Ok(new { message = "Request updated" });
     }
 
+    /* ---------- 删除 ---------- */
+    [Authorize]
     [HttpDelete("{id:int}")]
-    public async Task<IActionResult> DeleteHelpRequest(int id)
+    public async Task<IActionResult> Delete(int id)
     {
-        var entity = await db.HelpRequests.FindAsync(id);
+        var entity = await db.HelpRequests.Include(r => r.Comments).FirstOrDefaultAsync(r => r.Id == id);
         if (entity is null) return NotFound();
 
-        db.HelpRequests.Remove(entity);
+        var me = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        if (entity.RequesterId != me) return Forbid();
+
+        db.HelpRequests.Remove(entity);   // 级联删除评论
         await db.SaveChangesAsync();
-        return NoContent();
+        return Ok(new { message = "Request deleted" });
     }
 }

@@ -2,9 +2,12 @@ using HandInHand.Data;
 using HandInHand.Middlewares;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using HandInHand.Services;
+using Microsoft.AspNetCore.Identity;
+using HandInHand.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +28,10 @@ builder.Services.AddCors(opt =>
 
 builder.Services.AddAutoMapper(typeof(Program));
 
+// builder.Services.AddIdentityCore<User>()
+//                 .AddRoles<IdentityRole>()
+//                 .AddEntityFrameworkStores<AppDbContext>();
+
 builder.Services.AddControllers();
 
 // JWT
@@ -43,10 +50,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 builder.Services.AddAuthorization();
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<TokenService>();
 
 // ---------------- 构建并配置管道 ----------------
 var app = builder.Build();
+
+app.UseStaticFiles();
 
 if (app.Environment.IsDevelopment())
 {
