@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+
+          <!-- 同时输出 Cobertura + lcov，方便本地 & CI -->
+          <Format>cobertura,lcov</Format>
+
+          <!-- ❶ 排除所有迁移 /Designer/快照文件 -->
+          <ExcludeByFile>**/Migrations/*.cs</ExcludeByFile>
+
+          <!-- ❷ 未达 80 % 行覆盖率时让 dotnet test 失败 -->
+          <Threshold>80</Threshold>
+          <ThresholdStat>Total</ThresholdStat>
+          <ThresholdType>line</ThresholdType>
+
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

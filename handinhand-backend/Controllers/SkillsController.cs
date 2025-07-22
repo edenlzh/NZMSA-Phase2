@@ -44,7 +44,8 @@ public class SkillsController(AppDbContext db, IMapper mapper) : ControllerBase
 
     /* ---------- 我的技能列表 ---------- */
     [Authorize]
-    [HttpGet("me")]
+    [HttpGet("my")]          // 配合测试用例
+    [HttpGet("me")]          // 向后兼容原路径
     public async Task<IEnumerable<SkillDto>> My()
     {
         var me = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -52,7 +53,7 @@ public class SkillsController(AppDbContext db, IMapper mapper) : ControllerBase
             .Where(s => s.UserId == me)
             .Include(s => s.User)
             .ToListAsync();
-        return mapper.Map<List<SkillDto>>(list);
+        return mapper.Map<List<SkillDto>>(list);   // 空集合也返回 200
     }
 
     /* ---------- 更新 ---------- */

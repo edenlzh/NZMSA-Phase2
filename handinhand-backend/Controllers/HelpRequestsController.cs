@@ -44,7 +44,8 @@ public class HelpRequestsController(AppDbContext db, IMapper mapper) : Controlle
 
     /* ---------- 我的求助 ---------- */
     [Authorize]
-    [HttpGet("me")]
+    [HttpGet("my")]          // 新增
+    [HttpGet("me")]          // 兼容旧路径
     public async Task<IEnumerable<HelpRequestDto>> My()
     {
         var me = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -52,7 +53,7 @@ public class HelpRequestsController(AppDbContext db, IMapper mapper) : Controlle
             .Where(r => r.RequesterId == me)
             .Include(r => r.Requester)
             .ToListAsync();
-        return mapper.Map<List<HelpRequestDto>>(list);
+        return mapper.Map<List<HelpRequestDto>>(list);   // 允许返回空集合
     }
 
     /* ---------- 更新 ---------- */
