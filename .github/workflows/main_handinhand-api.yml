@@ -23,17 +23,22 @@ jobs:
         with:
           dotnet-version: '8.x'
 
-      - name: Build with dotnet
-        run: dotnet build --configuration Release
+      - name: Restore
+        run: dotnet restore
+        working-directory: backend
 
-      - name: dotnet publish
-        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+      - name: Build
+        run: dotnet build -c Release --no-restore
+        working-directory: backend
 
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
+      - name: Publish
+        run: dotnet publish -c Release -o ${{github.workspace}}/publish --no-build
+        working-directory: backend
+
+      - uses: actions/upload-artifact@v4
         with:
-          name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
+          name: backend
+          path: ${{github.workspace}}/publish
 
   deploy:
     runs-on: ubuntu-latest
@@ -61,5 +66,5 @@ jobs:
         with:
           app-name: 'handinhand-api'
           slot-name: 'Production'
-          package: .
+          package: ${{github.workspace}}/publish
           
