@@ -58,6 +58,14 @@ var app = builder.Build();
 
 app.UseStaticFiles();
 
+// ★★★ 自动迁移：首次部署或有新迁移时自动创建 / 更新数据库 ★★★
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();               // 应用所有待执行的迁移
+    // 如需初始化种子数据，可在此处调用 DbSeeder.Seed(db);
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
