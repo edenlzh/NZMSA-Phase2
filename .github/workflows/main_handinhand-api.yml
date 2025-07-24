@@ -1,13 +1,16 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 
-name: Build and deploy ASP.Net Core app to Azure Web App - handinhand-api
+name: Build and deploy handinhand-api
 
 on:
   push:
     branches:
       - main
   workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: handinhand-api
 
 jobs:
   build:
@@ -25,15 +28,15 @@ jobs:
 
       - name: Restore
         run: dotnet restore
-        working-directory: backend
+        working-directory: handinhand-backend
 
       - name: Build
         run: dotnet build -c Release --no-restore
-        working-directory: backend
+        working-directory: handinhand-backend
 
       - name: Publish
         run: dotnet publish -c Release -o ${{github.workspace}}/publish --no-build
-        working-directory: backend
+        working-directory: handinhand-backend
 
       - uses: actions/upload-artifact@v4
         with:
@@ -51,7 +54,7 @@ jobs:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: .net-app
+          name: backend
       
       - name: Login to Azure
         uses: azure/login@v2
