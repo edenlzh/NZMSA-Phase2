@@ -59,12 +59,12 @@ export default function AvatarMenu() {
       }}>
       <img
         src={src}
-        width={36}           /* 占位，无论下载与否始终 36×36 */
-        height={36}
+        width={10}           /* 占位，无论下载与否始终 10×10 */
+        height={10}
         alt='User Avatar'
         onError={() => setFallback(true)}
         onClick={() => setOpen(o => !o)}
-        className="h-36 w-36 rounded-full object-cover cursor-pointer border-2 border-yellow-400"
+        className="h-10 w-10 rounded-full object-cover cursor-pointer border-2 border-yellow-400"
       />
 
       {open && (

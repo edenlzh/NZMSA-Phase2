@@ -23,4 +23,7 @@ html.dark body { @apply bg-surface-dark text-white;}
   .nav-link,.footer-link{@apply hover:underline dark:text-white;}
   .main-content{ @apply bg-[#FFF8DC] dark:bg-[#2C3E3F] text-gray-900 dark:text-white p-6;}
   .responsive-container { @apply mx-auto px-4 sm:px-6 lg:px-8 max-w-full;}
+  .nav-link {
+    @apply hover:underline dark:text-white transition-colors;
+  }
 }

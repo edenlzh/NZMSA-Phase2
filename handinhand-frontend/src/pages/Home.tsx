@@ -18,7 +18,7 @@ export default function Home() {
           />
         </div>
       </div>
-      <p className="leading-relaxed dark:text-yellow-100 text-center text-lg mt-4">
+      <p className="leading-relaxed dark:text-yellow-100 text-center text-lg mt-4 whitespace-pre-line">
         {t('homeDesc')}
       </p>
     </section>

@@ -62,7 +62,11 @@ app.UseStaticFiles();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();               // 应用所有待执行的迁移
+    //只在关系型数据库上执行迁移
+    if (db.Database.IsRelational())
+    {
+        db.Database.Migrate();               // 应用所有待执行的迁移
+    }
     // 如需初始化种子数据，可在此处调用 DbSeeder.Seed(db);
 }
 
