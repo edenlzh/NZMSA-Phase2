@@ -8,7 +8,7 @@
 
 ## Introduction
 
-This project is implemented according to the requirements of NZMSA 2025 Phase 2, and I have named it "Hand In Hand", a networking application for people to share skills and help each other. 
+This project is implemented according to the requirements of NZMSA 2025 Phase 2, and I have named it "Hand In Hand", a networking application for people to share skills and help each other. This application adopts frontend and backend separation deployment, with Azure Web App for the backend and Azure Static Web App for the frontend, and you can access it at [Hand In Hand](https://kind-dune-03fef7d00.2.azurestaticapps.net/). This URL is randomly assigned.
 
 In this application, you can share your skills and seek help from the community. You can post skills by clicking the "Post Skill" button after logging in, and seek help by clicking the "Ask Help" button. You can also browse skills and help requests posted by other users and leave comments on any post. After logging in, you can click on your avatar in the navigation bar to access your profile page, where you can view and edit your personal information. If you have previously posted skills or help requests that are no longer relevant, you can delete them from the "My Skills" or "My Requests" pages. Please note that any deletion is irreversible, and once an account is deleted, it cannot be recovered. Please proceed with caution.
 
