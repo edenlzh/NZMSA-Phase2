@@ -31,11 +31,10 @@ export default function NavBar() {
       <div className="page h-16 flex items-center justify-between gap-4">
         {/* ========== 左侧 Logo ========== */}
         <Link to="/" className="flex items-center gap-2 shrink-0">
-          {/* 注意：移动端缩到 h-12 w-12，桌面再放大 */}
           <img
             src={logo}
             alt="logo"
-            className="h-12 w-12 md:h-25 md:w-25 lg:h-40 lg:w-40 object-contain"
+            className="h-40 w-40 object-contain"
           />
 
           {/* 标语：≥1024px 才显示，避免手机挤占空间 */}
